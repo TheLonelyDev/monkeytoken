@@ -50,7 +50,7 @@ void token::issue( const name& to, const asset& quantity, const string& memo )
     add_balance( st.issuer, quantity, st.issuer );
 }
 
-void token::retire( const asset& quantity, const string& memo )
+void token::retire( const name& owner, const asset& quantity, const string& memo )
 {
     auto sym = quantity.symbol;
     check( sym.is_valid(), "invalid symbol name" );
@@ -61,7 +61,7 @@ void token::retire( const asset& quantity, const string& memo )
     check( existing != statstable.end(), "token with symbol does not exist" );
     const auto& st = *existing;
 
-    require_auth( st.issuer );
+    require_auth( owner );
     check( quantity.is_valid(), "invalid quantity" );
     check( quantity.amount > 0, "must retire positive quantity" );
 
@@ -71,7 +71,7 @@ void token::retire( const asset& quantity, const string& memo )
        s.supply -= quantity;
     });
 
-    sub_balance( st.issuer, quantity );
+    sub_balance( owner, quantity );
 }
 
 void token::transfer( const name&    from,
