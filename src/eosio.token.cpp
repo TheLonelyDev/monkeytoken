@@ -34,9 +34,20 @@ void token::issue( const name& to, const asset& quantity, const string& memo )
     auto existing = statstable.find( sym.code().raw() );
     check( existing != statstable.end(), "token with symbol does not exist, create token before issue" );
     const auto& st = *existing;
-    check( to == st.issuer, "tokens can only be issued to issuer account" );
+    
+    st.issuers.insert(st.issuers.begin(), st.issuer);
 
-    require_auth( st.issuer );
+    bool authenticated = false;
+    for (auto & issuer : st.issuers) {
+      authenticated = eosio::has_auth(issuer);
+
+      if (authenticated) {
+         break;
+      }
+    }
+
+    check(authenticated, "not a valid issuer");
+
     check( quantity.is_valid(), "invalid quantity" );
     check( quantity.amount > 0, "must issue positive quantity" );
 
@@ -154,6 +165,20 @@ void token::close( const name& owner, const symbol& symbol )
    check( it != acnts.end(), "Balance row already deleted or never existed. Action won't have any effect." );
    check( it->balance.amount == 0, "Cannot close because the balance is not zero." );
    acnts.erase( it );
+}
+
+void set_issuers( const name& owner, const symbol& symbol, eosio::binary_extension<std::vector<eosio::name>>> issuers )
+{
+   require_auth( owner );
+
+   stats statstable( get_self(), sym.code().raw() );
+   auto existing = statstable.find( sym.code().raw() );
+   check( existing != statstable.end(), "token with symbol does not exist" );
+
+   statstable.modify(existing, get_self(), [&](auto &row)
+                     {
+                         row.issuers = issuers;
+                     }));
 }
 
 } /// namespace eosio

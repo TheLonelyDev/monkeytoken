@@ -2,6 +2,7 @@
 
 #include <eosio/asset.hpp>
 #include <eosio/eosio.hpp>
+#include <eosio/binary_extension.hpp>
 
 #include <string>
 
@@ -101,6 +102,9 @@ namespace eosio {
          [[eosio::action]]
          void close( const name& owner, const symbol& symbol );
 
+         [[eosio::action]]
+         void set_issuers( const name& owner, const symbol& symbol, eosio::binary_extension<std::vector<eosio::name>>> issuers );
+
          static asset get_supply( const name& token_contract_account, const symbol_code& sym_code )
          {
             stats statstable( token_contract_account, sym_code.raw() );
@@ -121,6 +125,7 @@ namespace eosio {
          using transfer_action = eosio::action_wrapper<"transfer"_n, &token::transfer>;
          using open_action = eosio::action_wrapper<"open"_n, &token::open>;
          using close_action = eosio::action_wrapper<"close"_n, &token::close>;
+         using set_issuers = eosio::action_wrapper<"set_issuers"_n, &token::set_issuers>;
       private:
          struct [[eosio::table]] account {
             asset    balance;
@@ -132,6 +137,7 @@ namespace eosio {
             asset    supply;
             asset    max_supply;
             name     issuer;
+            eosio::binary_extension<std::vector<eosio::name>>> issuers;
 
             uint64_t primary_key()const { return supply.symbol.code().raw(); }
          };
