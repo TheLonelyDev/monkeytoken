@@ -99,7 +99,8 @@ namespace eosio
           */
       [[eosio::action]] void close(const name &owner, const symbol &symbol);
 
-      [[eosio::action]] void set_issuers(const name &owner, const symbol &symbol, eosio::binary_extension<std::vector<eosio::name>> > issuers);
+      [[eosio::action]] void setissuer(const name &owner, const symbol_code &sym_code);
+      [[eosio::action]] void rmissuer(const name &owner, const symbol_code &sym_code);
 
       static asset get_supply(const name &token_contract_account, const symbol_code &sym_code)
       {
@@ -121,7 +122,8 @@ namespace eosio
       using transfer_action = eosio::action_wrapper<"transfer"_n, &token::transfer>;
       using open_action = eosio::action_wrapper<"open"_n, &token::open>;
       using close_action = eosio::action_wrapper<"close"_n, &token::close>;
-      using set_issuers = eosio::action_wrapper<"set_issuers"_n, &token::set_issuers>;
+      using set_issuer_action = eosio::action_wrapper<"setissuer"_n, &token::setissuer>;
+      using remove_issuer_action = eosio::action_wrapper<"rmissuer"_n, &token::rmissuer>;
 
    private:
       struct [[eosio::table]] account
@@ -136,13 +138,20 @@ namespace eosio
          asset supply;
          asset max_supply;
          name issuer;
-         eosio::binary_extension<std::vector<eosio::name>> > issuers;
 
          uint64_t primary_key() const { return supply.symbol.code().raw(); }
       };
 
+      struct [[eosio::table]] issuer
+      {
+         eosio::name issuer;
+
+         uint64_t primary_key() const { return issuer.value; }
+      };
+
       typedef eosio::multi_index<"accounts"_n, account> accounts;
       typedef eosio::multi_index<"stat"_n, currency_stats> stats;
+      typedef eosio::multi_index<"issuers"_n, issuer> issuers;
 
       void sub_balance(const name &owner, const asset &value);
       void add_balance(const name &owner, const asset &value, const name &ram_payer);

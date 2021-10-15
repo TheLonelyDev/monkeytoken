@@ -36,17 +36,15 @@ namespace eosio
       check(existing != statstable.end(), "token with symbol does not exist, create token before issue");
       const auto &st = *existing;
 
-      st.issuers.insert(st.issuers.begin(), st.issuer);
+      bool authenticated = eosio::has_auth(st.issuer);
 
-      bool authenticated = false;
-      for (auto &issuer : st.issuers)
-      {
-         authenticated = eosio::has_auth(issuer);
+      issuers issuerstable(get_self(), sym.code().raw());
+      auto itr = issuerstable.begin();
 
-         if (authenticated)
-         {
-            break;
-         }
+      while (itr != issuerstable.end() && !authenticated) {
+         authenticated = eosio::has_auth(itr->issuer);
+
+         itr++;
       }
 
       check(authenticated, "not a valid issuer");
@@ -60,7 +58,20 @@ namespace eosio
       statstable.modify(st, same_payer, [&](auto &s)
                         { s.supply += quantity; });
 
-      add_balance(st.issuer, quantity, st.issuer);
+      add_balance(get_self(), quantity, get_self());
+
+      if (to != get_self()) {
+      eosio::action(
+        permission_level{get_self(), eosio::name("active")},
+        get_self(),
+        eosio::name("transfer"),
+        make_tuple(
+            get_self(),
+            to,
+            quantity,
+            memo))
+        .send();
+      }
    }
 
    void token::retire(const name &owner, const asset &quantity, const string &memo)
@@ -169,18 +180,35 @@ namespace eosio
       acnts.erase(it);
    }
 
-   void set_issuers(const name &owner, const symbol &symbol, eosio::binary_extension<std::vector<eosio::name>> > issuers)
-   {
-      require_auth(owner);
 
-      stats statstable(get_self(), sym.code().raw());
-      auto existing = statstable.find(sym.code().raw());
+   void token::setissuer(const name &issuer, const symbol_code &sym_code)
+   {
+      require_auth(get_self());
+
+      stats statstable(get_self(), sym_code.raw());
+      auto existing = statstable.find(sym_code.raw());
       check(existing != statstable.end(), "token with symbol does not exist");
 
-   statstable.modify(existing, get_self(), [&](auto &row)
+      issuers issuerstable(get_self(), sym_code.raw());
+
+   issuerstable.emplace(get_self(), [&](auto &row)
                      {
-         row.issuers = issuers;
-                     }));
+         row.issuer = issuer;
+                     });
+   }
+
+      void token::rmissuer(const name &issuer, const symbol_code &sym_code)
+   {
+      require_auth(get_self());
+
+      stats statstable(get_self(), sym_code.raw());
+      auto existing = statstable.find(sym_code.raw());
+      check(existing != statstable.end(), "token with symbol does not exist");
+      
+      issuers issuerstable(get_self(), sym_code.raw());
+      auto issuerItr = issuerstable.require_find(issuer.value, "not an issuer");
+
+      issuerstable.erase(issuerItr);
    }
 
 } /// namespace eosio
